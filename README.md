@@ -7,3 +7,5 @@ In Naive Exact Matching search algorithm, every character in the string will be 
 Boyer Moore search algorithm is good tool to search string within a long string. It theoretically faster than Naive Exact Matching method. Boyer Moore search algorithm bypass a number of characters in a long string without comparison depend on the conditions.
 
 The coding here are fast exact string search algorithm, bypass a number of characters in a long string without comparison.
+
+Coding attached here are written in Microsoft C#.
