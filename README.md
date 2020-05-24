@@ -1,4 +1,4 @@
-# String_Search_algorithm
+# Fast Exact String Search algorithm
 
 To search a substring within a long string in online mode, we can use Naive Exact Matching algorithm, Boyer Moore search algorithm and other algorithms.
 
