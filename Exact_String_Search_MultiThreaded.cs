@@ -1,23 +1,19 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Runtime.InteropServices;
 
-namespace String_Search
+namespace ExactStringMatching
 {
     class Program
     {
-        [DllImport("kernel32.dll")]
-        static extern int GetCurrentProcessorNumber();
-
         static void Main(string[] args)
         {
             //string T = "GTTATAGCTGATCGCGGCGTAGCGGCGATAT";  //original
             //string T = "GTTATAGCTGATCCCGGCGTAGCGGCGATATCTCCCCC";
             //string T = "GTTAGAGCTGATCGCGGCGTAGCGGCGATATCGAGCGGCGCCTCATAGTAGATA";
             string T = "TGTGCGATAGTAGAAAAATATAGATAAGATACGCAATTACATAGATAAGATACATGTTAGAGTGATGAAGCGATAAAAGGTAGGTAGCGGCGTAGGAAAACCGTGATAGTAGAAAAATATAGATAAGATACGCAATTACA";  //
-            //string T = "TGCGATAGTAGAAAAATATAGATAAGATACGCAATTACATAGATAAGATA";  //
+            string T1 = "TGCGATAGTAGAAAAATATAGATAAGATACGCAATTACATAGATAAGATA";
             //string T = "CGTGCCTACTTACTTACTTACTTACGCGAA";  //
             //string P = "CTTACTTAC";
             //string P = "GTAGCGGCG";  //original
@@ -42,115 +38,67 @@ namespace String_Search
             //string P = "AAAA";
             //string P = "AAAAA";
 
-            Console.WriteLine("The number of processors on this computer is {0}.", Environment.ProcessorCount);
-            int number_of_program_threads = Environment.ProcessorCount - 1;   //One thread is reserved for system & other miscellaneous processes
+            class_ExactStringSearch ExactStringMatching = new class_ExactStringSearch();
+            ExactStringMatching.stringSearch(P, T);
+            ExactStringMatching.print_Results();
 
-            List<int>[] P_in_T_results = new List<int>[number_of_program_threads];
-            for (int i = 0; i < number_of_program_threads; i++)
-                P_in_T_results[i] = new List<Int32>();
-            List<int> P_in_T_results_total = new List<int>();
-
-            int[] start_index = new int[number_of_program_threads];
-            int[] end_index = new int[number_of_program_threads];
-
-            if (P.Length != 1)
-            {
-                string_search_class my_string_search_class = new string_search_class();
-
-                my_string_search_class.preprocessing_string_P(P);
-
-                start_index[0] = 0;
-                for (int i = 0; i < number_of_program_threads; i++)
-                {
-                    if (i > 0)
-                        start_index[i] = end_index[i - 1] - P.Length + 2;
-                    end_index[i] = (int)(T.Length / number_of_program_threads * (i + 1) + P.Length - 1);
-                }
-                end_index[number_of_program_threads - 1] = T.Length - 1;
-
-                Thread[] threadsArray = new Thread[number_of_program_threads];
-
-                for (int i = 0; i < number_of_program_threads; i++)
-                {
-                    int x = i;
-                    threadsArray[i] = new Thread(() => P_in_T_results[x] = my_string_search_class.string_search(P, T.Substring(start_index[x], end_index[x] - start_index[x] + 1)));
-                }
-
-                try
-                {
-                    foreach (Thread t in threadsArray)
-                        t.Start();
-
-                    foreach (Thread t in threadsArray)
-                        t.Join();
-                    // Join both threads with no timeout
-                    // Run both until done.
-                    // threads have finished at this point.
-                }
-                catch (ThreadStateException e)
-                {
-                    Console.WriteLine(e);  // Display text of exception
-                }
-                catch (ThreadInterruptedException e)
-                {
-                    Console.WriteLine(e);  // This exception means that the thread
-                                           // was interrupted during a Wait
-                }
-            }
-            else //P.Length == 1
-            {
-                int T_ptr = 0;
-                while (T_ptr < T.Length)
-                {
-                    if (P[0] == T[T_ptr])
-                        P_in_T_results_total.Add(T_ptr);
-
-                    T_ptr++;
-                }
-            }
-
-            for (int x = 0; x < number_of_program_threads; x++)
-                for (int y = 0; y < P_in_T_results[x].Count(); y++)
-                {
-                    P_in_T_results[x][y] += start_index[x];
-                }
-
-            for (int i = 0; i < number_of_program_threads; i++)
-                P_in_T_results_total.AddRange(P_in_T_results[i]);
-
-            if (P_in_T_results_total.Any())
-            {
-                Console.Write("String P is found inside string T, between: ");
-                foreach (int i in P_in_T_results_total)
-                    Console.Write(i + "~" + (i + P.Length - 1) + ", ");
-                Console.WriteLine("");
-            }
-            else
-                Console.WriteLine("P string not exist in string T");
+            ExactStringMatching.stringSearch(P, T1);
+            ExactStringMatching.print_Results();
 
             Console.Read();
         }
 
-        public class string_search_class
+        class class_ExactStringSearch
         {
-            struct P_Bad_Character_struct
+            struct struct_P_Bad_Character
             {
                 public char P_Char;
                 public int Bad_Character_Shift;
 
-                public P_Bad_Character_struct(char input1, int input2)
+                public struct_P_Bad_Character(char _P_Char, int _Bad_Character_Shift)
                 {
-                    P_Char = input1;
-                    Bad_Character_Shift = input2;
+                    P_Char = _P_Char;
+                    Bad_Character_Shift = _Bad_Character_Shift;
                 }
             }
 
+            //String P fast shift table
             int only_last_character_of_P_matching_shift;
-            int[] P_Good_Suffix_shift_table;
-            List<P_Bad_Character_struct> P_Bad_Character_shift_table = new List<P_Bad_Character_struct>();
+            List<int> P_Good_Suffix_shift_table;
+            List<struct_P_Bad_Character> P_Bad_Character_shift_table;
+            
             int P_Length;
 
-            public void preprocessing_string_P(string local_P)
+            static int number_of_program_threads;
+            Thread[] threadsArray;
+
+            List<int>[] List_P_in_T_results;
+            List<int> List_P_in_T_results_total;
+            int[] segmentT_start_index;
+            int[] segmentT_end_index;
+
+            public class_ExactStringSearch()
+            {
+                number_of_program_threads = Environment.ProcessorCount - 1;     //One thread is reserved for system & other miscellaneous processes
+                threadsArray = new Thread[number_of_program_threads];
+
+                List_P_in_T_results = new List<int>[number_of_program_threads];
+                for (int i = 0; i < number_of_program_threads; i++)
+                    List_P_in_T_results[i] = new List<int>();
+                List_P_in_T_results_total = new List<int>();
+
+                segmentT_start_index = new int[number_of_program_threads];
+                segmentT_end_index = new int[number_of_program_threads];
+
+                //String P fast shift table
+                only_last_character_of_P_matching_shift = -1;
+                P_Good_Suffix_shift_table = new List<int>();
+                P_Bad_Character_shift_table = new List<struct_P_Bad_Character>();
+
+                P_Length = -1;
+            }
+
+            private void preprocessing_string_P(string local_P)
             {
                 string matched_string = "";
                 int P_ptr;  //Pointer showing position of target search string 'P' last character now
@@ -168,7 +116,8 @@ namespace String_Search
                 int matched_string_ptr = 1;
 
                 //P_ptr pointer continue from only_last_character_of_P_matching case
-                P_Good_Suffix_shift_table = new int[P_Length - 2];
+                for (int i = 0; i < P_Length - 2; i++)
+                    P_Good_Suffix_shift_table.Add(-1);
 
             //P_Good_Suffix_Rule
             finding_good_suffix_shift:
@@ -231,7 +180,7 @@ namespace String_Search
                 //P_ptr == -1, special case when string 'P' only consist of only one duplicated character
                 if (P_ptr != -1) //string 'P' has character different from P.Last()
                 {
-                    P_Bad_Character_shift_table.Add(new P_Bad_Character_struct(local_P[P_ptr], local_P.Length - 1 - P_ptr));  //Add P second last character into the table
+                    P_Bad_Character_shift_table.Add(new struct_P_Bad_Character(local_P[P_ptr], local_P.Length - 1 - P_ptr));  //Add P second last character into the table
                     P_ptr--;
 
                     while (P_ptr >= 0)  //when string P.length >= 3
@@ -242,7 +191,7 @@ namespace String_Search
 
                         if (i == P_Bad_Character_shift_table.Count() && local_P[P_ptr] != local_P.Last()) //P current character not occur inside P_Bad_Character_shift_table, add this new character & it position
                         {
-                            P_Bad_Character_shift_table.Add(new P_Bad_Character_struct(local_P[P_ptr], local_P.Length - 1 - P_ptr));
+                            P_Bad_Character_shift_table.Add(new struct_P_Bad_Character(local_P[P_ptr], local_P.Length - 1 - P_ptr));
                         }
 
                         P_ptr--;
@@ -250,9 +199,9 @@ namespace String_Search
                 }
             }
 
-            public List<int> string_search(string P, string T)
+            private List<int> string_search(string P, string T)
             {
-                List<int> local_P_in_T_results = new List<int>();
+                List<int> local_List_P_in_T_results = new List<int>();
 
                 int start_P_in_T = 0;
                 int end_P_in_T = P_Length - 1;
@@ -320,7 +269,7 @@ namespace String_Search
                         }
                         else if (matched_string_length == P_Length) //found string 'P' matching string 'T' in this position
                         {
-                            local_P_in_T_results.Add(start_P_in_T); //record the position of string 'P' in string 'T'
+                            local_List_P_in_T_results.Add(start_P_in_T); //record the position of string 'P' in string 'T'
                             start_P_in_T += 1;
                             end_P_in_T += 1;
                         }
@@ -339,7 +288,116 @@ namespace String_Search
                     }
                 }
 
-                return local_P_in_T_results;
+                return local_List_P_in_T_results;
+            }
+
+            public void stringSearch(string _a, string _b)
+            {
+                string P, T;
+                List_P_in_T_results_total.Clear();
+
+                //longer string will become 'T'
+                if (_a.Length > _b.Length)
+                {
+                    T = _a;
+                    P = _b;
+                }
+                else
+                {
+                    T = _b;
+                    P = _a;
+                }
+
+                if (P.Length != 1)
+                {
+                    preprocessing_string_P(P);          //create current string P fast shift table data
+
+                    //If string T is not significantly longer than string P, then we don't need to run all the system processor threads
+                    number_of_program_threads = Environment.ProcessorCount - 1;     //One thread is reserved for system & other miscellaneous processes
+                    if (number_of_program_threads > T.Length / P.Length / 2)
+                        number_of_program_threads = T.Length / P.Length / 2;    //When we don't need so many system processor threads, reduce it.
+                    if (number_of_program_threads == 0)
+                        number_of_program_threads = 1;
+
+                    segmentT_start_index[0] = 0;
+                    for (int i = 0; i < number_of_program_threads; i++)
+                    {
+                        if (i > 0)
+                            segmentT_start_index[i] = segmentT_end_index[i - 1] - P.Length + 2;
+                        segmentT_end_index[i] = (int)(T.Length / number_of_program_threads * (i + 1) + P.Length - 1);
+                    }
+                    segmentT_end_index[number_of_program_threads - 1] = T.Length - 1;
+
+                    for (int i = 0; i < number_of_program_threads; i++)
+                    {
+                        int x = i;
+                        threadsArray[i] = new Thread(() => List_P_in_T_results[x] = string_search(P, T.Substring(segmentT_start_index[x], segmentT_end_index[x] - segmentT_start_index[x] + 1)));
+                    }
+
+                    try
+                    {
+                        for (int i = 0; i < number_of_program_threads; i++)
+                            threadsArray[i].Start();
+
+                        for (int i = 0; i < number_of_program_threads; i++)
+                            threadsArray[i].Join();
+                        // Join both threads with no timeout
+                        // Run both until done.
+                        // threads have finished at this point.
+                    }
+                    catch (ThreadStateException e)
+                    {
+                        Console.WriteLine(e);  // Display text of exception
+                    }
+                    catch (ThreadInterruptedException e)
+                    {
+                        Console.WriteLine(e);  // This exception means that the thread
+                                               // was interrupted during a Wait
+                    }
+                    finally
+                    {
+                        //Clear the current string P fast shift table data, so user can re-use it to search other strings
+                        only_last_character_of_P_matching_shift = -1;
+                        P_Good_Suffix_shift_table.Clear();
+                        P_Bad_Character_shift_table.Clear();
+
+                        //Add segmentT_start_index[x] in each string segments to correctly display search results of string P locations in string T
+                        for (int x = 0; x < number_of_program_threads; x++)
+                            for (int y = 0; y < List_P_in_T_results[x].Count(); y++)
+                                List_P_in_T_results[x][y] += segmentT_start_index[x];
+
+                        //Combine all the results from each threads into one List_P_in_T_results
+                        for (int i = 0; i < number_of_program_threads; i++)
+                        {
+                            List_P_in_T_results_total.AddRange(List_P_in_T_results[i]);
+                            List_P_in_T_results[i].Clear();
+                        }
+                    }
+                }
+                else //P.Length == 1
+                {
+                    int T_ptr = 0;
+                    while (T_ptr < T.Length)
+                    {
+                        if (P[0] == T[T_ptr])
+                            List_P_in_T_results_total.Add(T_ptr);
+
+                        T_ptr++;
+                    }
+                }
+            }
+
+            public void print_Results()
+            {
+                if (List_P_in_T_results_total.Any())
+                {
+                    Console.Write("String P is found inside string T, between: ");
+                    foreach (int i in List_P_in_T_results_total)
+                        Console.Write(i + "~" + (i + P_Length - 1) + ", ");
+                    Console.WriteLine("");
+                }
+                else
+                    Console.WriteLine("P string not exist in string T");
             }
         }
     }
