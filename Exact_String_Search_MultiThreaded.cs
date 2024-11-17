@@ -114,6 +114,7 @@ namespace ExactStringMatching
                 //Second case: when string 'P' suffix partially matching string 'T', 2 characters & more. How many characters shift string 'P' should be in string 'T'
                 matched_string = local_P.Substring(P_Length - 2, 2);
                 int matched_string_ptr = 1;
+                P_ptr = P_Length - 2; //set the P_ptr to be second last characters of P string
 
                 //P_ptr pointer continue from only_last_character_of_P_matching case
                 for (int i = 0; i < P_Length - 2; i++)
@@ -213,14 +214,12 @@ namespace ExactStringMatching
                     int P_ptr;  //Pointer showing position of target search string 'P' last character now
                     T_ptr = P_Length - 1;  //Pointer showing position of target search string 'P' last character in string 'T' now
 
-                    int table_isEmpty = 0;
-
                     //Start string 'P' against string 'T' comparison
                     int matched_string_length = 0;
                     P_ptr = P_Length - 1;
 
-                string_compare_P_against_T:
-                    if (T_ptr < T.Length)
+                //string_compare_P_against_T:
+                    while (T_ptr < T.Length)
                     {
                         //String compare from string 'P' last character toward first character against string 'T'. Stop whenever there is a mismatch.
                         while (P_ptr >= 0 && P[P_ptr] == T[T_ptr])
@@ -232,33 +231,20 @@ namespace ExactStringMatching
 
                         if (matched_string_length == 0)  //Bad Character Rule
                         {
-                            switch (table_isEmpty)
+                            int i = 0;
+                            while (i < P_Bad_Character_shift_table.Count() && P_Bad_Character_shift_table[i].P_Char != T[end_P_in_T])
+                                i++;
+
+                            if (i == P_Bad_Character_shift_table.Count())
                             {
-                                case 1:
-                                    //if (P_Bad_Character_shift_table.Count() == 0)
-
-                                    //special case when string 'P' only consist of only one duplicated character
-                                    start_P_in_T += P_Length;
-                                    end_P_in_T += P_Length;
-                                    break;
-
-                                default:
-                                    int i = 0;
-                                    while (i < P_Bad_Character_shift_table.Count() && P_Bad_Character_shift_table[i].P_Char != T[end_P_in_T])
-                                        i++;
-
-                                    if (i == P_Bad_Character_shift_table.Count())
-                                    {
-                                        //string 'T' character correspond to string 'P' last character position cannot be found in string 'P'
-                                        start_P_in_T += P_Length;
-                                        end_P_in_T += P_Length;
-                                    }
-                                    else
-                                    {
-                                        start_P_in_T += P_Bad_Character_shift_table[i].Bad_Character_Shift;
-                                        end_P_in_T += P_Bad_Character_shift_table[i].Bad_Character_Shift;
-                                    }
-                                    break;
+                                //string 'T' character correspond to string 'P' last character position cannot be found in string 'P'
+                                start_P_in_T += P_Length;
+                                end_P_in_T += P_Length;
+                            }
+                            else
+                            {
+                                start_P_in_T += P_Bad_Character_shift_table[i].Bad_Character_Shift;
+                                end_P_in_T += P_Bad_Character_shift_table[i].Bad_Character_Shift;
                             }
                         }
                         else if (matched_string_length == 1)
@@ -284,7 +270,6 @@ namespace ExactStringMatching
                         P_ptr = P_Length - 1;
                         matched_string_length = 0;
 
-                        goto string_compare_P_against_T;
                     }
                 }
 
