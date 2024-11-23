@@ -9,3 +9,6 @@ Boyer Moore search algorithm is good tool to search string within a long string.
 The coding here are fast exact string search algorithm, bypass a number of characters in a long string without comparison.
 
 Coding attached here are written in Microsoft C#.
+
+
+In the code file 'String_search_multi-threads_WildCard.cs', user can use Wild Card '?' character in string P to find Exact String Match of string P from string T. Wild Card '?' character can be any characters in string P.
